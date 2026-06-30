@@ -18,6 +18,7 @@ from handlers import (
     unknown, add_cmd, list_cmd, reminders_cmd
 )
 from scheduler import start_scheduler, scheduler
+from keyboards import main_menu as main_menu_keyboard
 
 # Logging setup
 logging.basicConfig(
@@ -26,6 +27,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+async def main_menu_callback(update, context):
+    """Callback for the main menu 'Back' button."""
+    await update.callback_query.edit_message_text(
+        "👋 Welcome to <b>To Do List Bot</b>!\n\n"
+        "I help you manage your tasks and never miss a deadline.\n"
+        "Use the menu below:",
+        reply_markup=main_menu_keyboard(),
+        parse_mode="HTML"
+    )
+
+
 async def main():
     init_db()
     app = Application.builder().token(BOT_TOKEN).build()
@@ -33,9 +46,9 @@ async def main():
     # Conversation handler for multi-step flows
     conv_handler = ConversationHandler(
         entry_points=[
-            CallbackQueryHandler(add_task_start, pattern="^add_task$"),
-            CallbackQueryHandler(edit_task_start, pattern="^edit_(\d+)$"),
-            CallbackQueryHandler(remind_task_start, pattern="^remind_(\d+)$"),
+            CallbackQueryHandler(add_task_start, pattern=r"^add_task$"),
+            CallbackQueryHandler(edit_task_start, pattern=r"^edit_(\d+)$"),
+            CallbackQueryHandler(remind_task_start, pattern=r"^remind_(\d+)$"),
         ],
         states={
             0: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_task_receive)],
@@ -44,7 +57,7 @@ async def main():
         },
         fallbacks=[
             CommandHandler("cancel", cancel),
-            CallbackQueryHandler(cancel, pattern="^cancel$")
+            CallbackQueryHandler(cancel, pattern=r"^cancel$")
         ]
     )
 
@@ -57,29 +70,17 @@ async def main():
     app.add_handler(CommandHandler("completed", completed_tasks))
 
     # Callback query handlers (non-conversation)
-    app.add_handler(CallbackQueryHandler(show_main_menu, pattern="^main_menu$"))  # needed? No, but we can add a back to main.
-    # Actually the back button uses "main_menu" callback, we need a handler that sends the main menu.
-    # We'll define a simple function to edit to main menu.
-    from keyboards import main_menu as main_menu_keyboard
-    async def main_menu_callback(update, context):
-        await update.callback_query.edit_message_text(
-            "👋 Welcome to <b>To Do List Bot</b>!\n\n"
-            "I help you manage your tasks and never miss a deadline.\n"
-            "Use the menu below:",
-            reply_markup=main_menu_keyboard(),
-            parse_mode="HTML"
-        )
-    app.add_handler(CallbackQueryHandler(main_menu_callback, pattern="^main_menu$"))
-    app.add_handler(CallbackQueryHandler(help_command, pattern="^help_menu$"))
-    app.add_handler(CallbackQueryHandler(settings_menu, pattern="^settings$"))
-    app.add_handler(CallbackQueryHandler(my_tasks, pattern="^my_tasks$"))
-    app.add_handler(CallbackQueryHandler(reminders_list, pattern="^reminders$"))
-    app.add_handler(CallbackQueryHandler(completed_tasks, pattern="^completed$"))
-    app.add_handler(CallbackQueryHandler(task_actions_handler, pattern="^actions_(\d+)$"))
-    app.add_handler(CallbackQueryHandler(mark_done, pattern="^done_(\d+)$"))
-    app.add_handler(CallbackQueryHandler(lambda u,c: mark_done(u,c,done=False), pattern="^undo_(\d+)$"))
-    app.add_handler(CallbackQueryHandler(delete_task, pattern="^delete_(\d+)$"))
-    app.add_handler(CallbackQueryHandler(cancel_reminder_handler, pattern="^cancel_reminder_(\d+)$"))
+    app.add_handler(CallbackQueryHandler(main_menu_callback, pattern=r"^main_menu$"))
+    app.add_handler(CallbackQueryHandler(help_command, pattern=r"^help_menu$"))
+    app.add_handler(CallbackQueryHandler(settings_menu, pattern=r"^settings$"))
+    app.add_handler(CallbackQueryHandler(my_tasks, pattern=r"^my_tasks$"))
+    app.add_handler(CallbackQueryHandler(reminders_list, pattern=r"^reminders$"))
+    app.add_handler(CallbackQueryHandler(completed_tasks, pattern=r"^completed$"))
+    app.add_handler(CallbackQueryHandler(task_actions_handler, pattern=r"^actions_(\d+)$"))
+    app.add_handler(CallbackQueryHandler(mark_done, pattern=r"^done_(\d+)$"))
+    app.add_handler(CallbackQueryHandler(lambda u, c: mark_done(u, c, done=False), pattern=r"^undo_(\d+)$"))
+    app.add_handler(CallbackQueryHandler(delete_task, pattern=r"^delete_(\d+)$"))
+    app.add_handler(CallbackQueryHandler(cancel_reminder_handler, pattern=r"^cancel_reminder_(\d+)$"))
     app.add_handler(conv_handler)
     # Fallback for unknown messages (must be last)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown))
@@ -97,6 +98,7 @@ async def main():
         await stop_event.wait()
 
     scheduler.shutdown(wait=False)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
