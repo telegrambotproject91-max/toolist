@@ -1,3 +1,4 @@
+import asyncio
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 from config import BOT_TOKEN
 from database import init_db
@@ -7,6 +8,7 @@ from handlers import (
     button_callback
 )
 from scheduler import start_scheduler
+
 
 def main():
     # Initialize the database
@@ -31,9 +33,16 @@ def main():
     # Start the reminder scheduler (pass the bot instance)
     start_scheduler(application.bot)
 
+    # ---- FIX for Python 3.14 ----
+    # Create a new event loop and set it as the current loop.
+    # This prevents the RuntimeError: "There is no current event loop"
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     # Start polling
     print("Bot is running...")
     application.run_polling()
+
 
 if __name__ == "__main__":
     main()
